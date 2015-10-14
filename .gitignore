@@ -1,1 +1,3 @@
 .vertx/
+.idea/
+*.iml
