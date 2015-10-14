@@ -2,9 +2,8 @@
 import static ratpack.groovy.Groovy.ratpack
 
 ratpack {
+    serverConfig { port 8080 }
     handlers {
-        get {
-            render "Hello World!\n"
-        }
+        all { render "Hello World!\n" }
     }
 }
