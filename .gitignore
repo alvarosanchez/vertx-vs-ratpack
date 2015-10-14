@@ -1,3 +1,7 @@
 .vertx/
 .idea/
 *.iml
+*.ipr
+*.iws
+.gradle/
+build/
