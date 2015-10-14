@@ -3,5 +3,5 @@
 import io.vertx.groovy.core.Vertx
 
 Vertx.vertx().createHttpServer().requestHandler { request ->
-  request.response().end("Hello world")
+  request.response().end("Hello world\n")
 }.listen(8080)
