@@ -1,1 +1,7 @@
+/*
+ * Convenience build file to just work with both projects at the same time in IDEA. While some commonalities could be
+ * extracted to this parent build file, I preferred to leave the original build files as if they were independent
+ * projects
+ */
+
 apply plugin: 'idea'

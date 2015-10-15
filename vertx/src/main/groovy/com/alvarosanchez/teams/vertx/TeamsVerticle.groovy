@@ -1,4 +1,4 @@
-package com.alvarosanchez.vertx
+package com.alvarosanchez.teams.vertx
 
 import io.vertx.core.AbstractVerticle
 

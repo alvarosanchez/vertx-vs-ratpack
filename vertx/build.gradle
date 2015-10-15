@@ -29,6 +29,8 @@ repositories {
 dependencies {
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-lang-groovy:$vertxVersion"
+
+    compile project(':teams-core')
 }
 
 processResources {
