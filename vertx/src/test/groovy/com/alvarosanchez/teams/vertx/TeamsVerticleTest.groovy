@@ -1,5 +1,6 @@
 package com.alvarosanchez.teams.vertx
 
+import groovy.util.logging.Slf4j
 import io.vertx.core.Vertx
 import io.vertx.ext.unit.Async
 import io.vertx.ext.unit.TestContext
@@ -11,6 +12,7 @@ import org.junit.runner.RunWith
 
 
 @RunWith(VertxUnitRunner)
+@Slf4j
 class TeamsVerticleTest {
 
     Vertx vertx
@@ -27,12 +29,13 @@ class TeamsVerticleTest {
     }
 
     @Test
-    public void testMyApplication(TestContext context) {
+    public void listTeams(TestContext context) {
         final Async async = context.async()
 
         vertx.createHttpClient().getNow(8080, "localhost", "/teams") { response ->
             response.handler { body ->
-                context.assertTrue(body.toString().contains("/teams"))
+                log.debug "body -> ${body.toString()}"
+                context.assertTrue(body.toString().equals("[]"))
                 async.complete()
             }
         }

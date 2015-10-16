@@ -4,6 +4,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
+import io.vertx.groovy.core.eventbus.Message
 import io.vertx.groovy.core.http.HttpServer
 import io.vertx.groovy.ext.web.Router
 import io.vertx.groovy.ext.web.RoutingContext
@@ -27,18 +28,28 @@ class TeamsVerticle extends GroovyVerticle {
         router.put("/teams").handler(this.&updateTeam)
         router.delete("/teams/:teamId").handler(this.&deleteTeam)
 
-        vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { AsyncResult<HttpServer> result ->
-            if (result.succeeded()) {
-                log.debug "Verticle deployed"
-                startFuture.complete()
+        vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { AsyncResult<HttpServer> listening ->
+            if (listening.succeeded()) {
+                log.debug "Verticle deployed. Deploying another verticle"
+
+                vertx.deployVerticle('groovy:com.alvarosanchez.teams.vertx.TeamsRepositoryVerticle') { AsyncResult<String> deployment ->
+                    if(deployment.succeeded()) {
+                        log.debug "Deployment completed"
+                        startFuture.complete()
+                    } else {
+                        startFuture.fail(deployment.cause())
+                    }
+                }
             } else {
-                startFuture.fail(result.cause())
+                startFuture.fail(listening.cause())
             }
         }
     }
 
     void getTeams(RoutingContext routingContext) {
-        routingContext.response().end(routingContext.normalisedPath())
+        vertx.eventBus().send("teams.list", [:]) { AsyncResult<Message> response ->
+            routingContext.response().end(response.result().body().toString())
+        }
     }
 
     void getTeam(RoutingContext routingContext) {
