@@ -1,12 +1,8 @@
 package com.alvarosanchez.teams.core
 
-import groovy.sql.Sql
 import org.h2.jdbcx.JdbcConnectionPool
-import org.h2.jdbcx.JdbcDataSource
 import spock.lang.Shared
 import spock.lang.Specification
-
-import javax.sql.DataSource
 
 class TeamRepositorySpec extends Specification {
 

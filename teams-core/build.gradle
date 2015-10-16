@@ -10,4 +10,14 @@ dependencies {
 
     testCompile 'com.h2database:h2:1.4.190'
     testCompile "org.spockframework:spock-core:1.0-groovy-2.4"
+
+    runtime 'ch.qos.logback:logback-classic:1.1.3'
+}
+
+test {
+    testLogging {
+        exceptionFormat = 'full'
+        events "failed", "standardOut", "standardError"
+        outputs.upToDateWhen { false }
+    }
 }
