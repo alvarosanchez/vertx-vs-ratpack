@@ -47,7 +47,8 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     void getTeams(RoutingContext routingContext) {
-        vertx.eventBus().send("teams.list", [:]) { AsyncResult<Message> response ->
+        log.debug "Received GET /teams request. Sending a message to the EB"
+        vertx.eventBus().send("teams", [action: 'list']) { AsyncResult<Message> response ->
             routingContext.response().end(response.result().body().toString())
         }
     }
@@ -57,7 +58,14 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     void createTeam(RoutingContext routingContext) {
-        routingContext.response().end(routingContext.normalisedPath())
+        log.debug "Received POST /teams request. Sending a message to the EB"
+
+        Map<String, Object> body = routingContext.bodyAsJson
+        log.debug "Request body: ${body}"
+
+        vertx.eventBus().send("teams", [action: 'save', team: body]) { AsyncResult<Message> response ->
+            routingContext.response().end(response.result().body().toString())
+        }
     }
 
     void updateTeam(RoutingContext routingContext) {

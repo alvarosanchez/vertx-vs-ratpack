@@ -1,5 +1,8 @@
 package com.alvarosanchez.teams.vertx
 
+import com.alvarosanchez.teams.core.Team
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import groovy.util.logging.Slf4j
 import io.vertx.core.Vertx
 import io.vertx.ext.unit.Async
@@ -39,5 +42,35 @@ class TeamsVerticleTest {
                 async.complete()
             }
         }
+    }
+
+    @Test
+    public void createTeam(TestContext context) {
+        final Async async = context.async()
+
+        Team team = new Team(name: 'Real Madrid CF')
+
+        create(team, context)
+
+        vertx.createHttpClient().getNow(8080, "localhost", "/teams") { listResponse ->
+            listResponse.handler { listBody ->
+                log.debug "listBody -> ${listBody.toString()}"
+                log.debug JsonOutput.toJson([new Team(id: 1, name: "Real Madrid CF")])
+                context.assertTrue(listBody.toString().equals(JsonOutput.toJson([new Team(id: 1, name: "Real Madrid CF")])))
+                async.complete()
+            }
+        }
+    }
+
+    private void create(Team team, TestContext context) {
+        String requestBody = JsonOutput.toJson(team)
+
+        vertx.createHttpClient().post(8080, "localhost", "/teams") { response ->
+            response.handler { body ->
+                log.debug "body -> ${body.toString()}"
+                context.assertTrue(new JsonSlurper().parseText(body.toString()).success)
+            }
+        }.putHeader('Content-Type', 'application/json').end(requestBody)
+
     }
 }
