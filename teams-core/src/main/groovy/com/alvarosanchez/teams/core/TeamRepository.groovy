@@ -6,6 +6,7 @@ interface TeamRepository {
 
     void save(Team team)
 
+    Team findById(Long id)
     Team findbyName(String name)
     List<Team> list()
 

@@ -28,8 +28,17 @@ class TeamRepositoryJdbcImpl implements TeamRepository {
 
     @Override
     Team findbyName(String name) {
+        return findByProperty('name', name)
+    }
+
+    @Override
+    Team findById(Long id) {
+        return findByProperty('id', id)
+    }
+
+    private Team findByProperty(String propertyName, Object propertyValue) {
         Sql sql = new Sql(dataSource)
-        def result = sql.firstRow("SELECT * FROM teams WHERE name = :name", [name: name])
+        def result = sql.firstRow("SELECT * FROM teams WHERE ${propertyName} = :value", [value: propertyValue])
         Team team
         if (result) {
             team = new Team(id: result.id, name: result.name)

@@ -25,6 +25,12 @@ class TeamRepositorySpec extends Specification {
         then:
         found
 
+        when:
+        found = teamRepository.findById(found.id)
+
+        then:
+        found
+
         cleanup:
         teamRepository.delete(found)
     }

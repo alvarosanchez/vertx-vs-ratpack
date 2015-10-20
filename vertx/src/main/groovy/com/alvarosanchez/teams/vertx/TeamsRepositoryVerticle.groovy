@@ -47,8 +47,25 @@ class TeamsRepositoryVerticle extends GroovyVerticle {
                     response = JsonOutput.toJson(success: true)
                     break
 
-            }
+                case 'show':
+                    Team team = repository.findById(body.teamId as Long)
+                    response = JsonOutput.toJson(team)
+                    break
 
+                case 'update':
+                    Team given = new Team(body.team as Map)
+                    Team existing = repository.findById(given.id)
+                    existing.name = given.name
+                    repository.update(existing)
+                    response = JsonOutput.toJson(success: true)
+                    break
+
+                case 'delete':
+                    Team team = repository.findById(body.teamId as Long)
+                    repository.delete(team)
+                    response = JsonOutput.toJson(success: true)
+                    break
+            }
 
             message.reply(response)
         }

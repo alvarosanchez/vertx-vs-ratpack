@@ -1,5 +1,7 @@
 package com.alvarosanchez.teams.vertx
 
+import com.alvarosanchez.teams.core.Team
+import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import io.vertx.core.AsyncResult
@@ -25,7 +27,7 @@ class TeamsVerticle extends GroovyVerticle {
         router.get("/teams").handler(this.&getTeams)
         router.get("/teams/:teamId").handler(this.&getTeam)
         router.post("/teams").handler(this.&createTeam)
-        router.put("/teams").handler(this.&updateTeam)
+        router.put("/teams/:teamId").handler(this.&updateTeam)
         router.delete("/teams/:teamId").handler(this.&deleteTeam)
 
         vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { AsyncResult<HttpServer> listening ->
@@ -54,7 +56,11 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     void getTeam(RoutingContext routingContext) {
-        routingContext.response().end(routingContext.normalisedPath())
+        Long teamId = routingContext.request().getParam('teamId') as Long
+        log.debug "Received GET /teams/${teamId} request. Sending a message to the EB"
+        vertx.eventBus().send("teams", [action: 'show', teamId: teamId]) { AsyncResult<Message> response ->
+            routingContext.response().end(response.result().body().toString())
+        }
     }
 
     void createTeam(RoutingContext routingContext) {
@@ -69,11 +75,20 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     void updateTeam(RoutingContext routingContext) {
-        routingContext.response().end(routingContext.normalisedPath())
+        Long teamId = routingContext.request().getParam('teamId') as Long
+        String name = routingContext.bodyAsJson.name
+        log.debug "Received PUT /teams/${teamId} request. Sending a message to the EB"
+        vertx.eventBus().send("teams", [action: 'update', team: [id: teamId, name: name]]) { AsyncResult<Message> response ->
+            routingContext.response().end(response.result().body().toString())
+        }
     }
 
     void deleteTeam(RoutingContext routingContext) {
-        routingContext.response().end(routingContext.normalisedPath())
+        Long teamId = routingContext.request().getParam('teamId') as Long
+        log.debug "Received DELETE /teams/${teamId} request. Sending a message to the EB"
+        vertx.eventBus().send("teams", [action: 'delete', teamId: teamId]) { AsyncResult<Message> response ->
+            routingContext.response().end(response.result().body().toString())
+        }
     }
 
 }
