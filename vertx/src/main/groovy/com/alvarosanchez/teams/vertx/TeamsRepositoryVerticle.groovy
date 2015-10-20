@@ -23,12 +23,10 @@ class TeamsRepositoryVerticle extends GroovyVerticle {
 
     @Override
     void start(Future<Void> startFuture) throws Exception {
-        log.debug "Initialising DB"
         repository = new TeamRepositoryJdbcImpl(dataSource)
         repository.init()
 
         EventBus eb = vertx.eventBus()
-        log.debug "Registering event bus handlers"
 
         eb.consumer("teams").handler { Message message ->
             Map<String, Object> body = message.body() as Map<String, Object>
@@ -76,6 +74,5 @@ class TeamsRepositoryVerticle extends GroovyVerticle {
     @Override
     void stop() throws Exception {
         new Sql(dataSource).execute "DROP ALL OBJECTS DELETE FILES"
-        log.debug "Database dropped"
     }
 }

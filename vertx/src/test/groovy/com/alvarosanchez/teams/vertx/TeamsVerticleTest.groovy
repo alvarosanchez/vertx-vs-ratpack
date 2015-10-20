@@ -4,8 +4,8 @@ import com.alvarosanchez.teams.core.Team
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.sql.Sql
-import groovy.util.logging.Slf4j
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.ext.unit.Async
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
@@ -16,11 +16,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 import javax.sql.DataSource
-import javax.xml.crypto.Data
-
 
 @RunWith(VertxUnitRunner)
-@Slf4j
 class TeamsVerticleTest {
 
     Vertx vertx
@@ -49,7 +46,6 @@ class TeamsVerticleTest {
 
         vertx.createHttpClient().getNow(8080, "localhost", "/teams") { response ->
             response.handler { body ->
-                log.debug "body -> ${body.toString()}"
                 context.assertTrue(new JsonSlurper().parseText(body.toString()).size() == 2)
                 async.complete()
             }
@@ -65,12 +61,10 @@ class TeamsVerticleTest {
 
         vertx.createHttpClient().post(8080, "localhost", "/teams") { response ->
             response.handler { body ->
-                log.debug "body -> ${body.toString()}"
-                context.assertTrue(new JsonSlurper().parseText(body.toString()).success)
+                assertSuccessfulResponse(context, body)
 
                 vertx.createHttpClient().getNow(8080, "localhost", "/teams/1") { listResponse ->
                     listResponse.handler { listBody ->
-                        log.debug "listBody -> ${listBody.toString()}"
                         context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                         async.complete()
                     }
@@ -90,7 +84,6 @@ class TeamsVerticleTest {
 
         vertx.createHttpClient().getNow(8080, "localhost", "/teams/1") { listResponse ->
             listResponse.handler { listBody ->
-                log.debug "listBody -> ${listBody.toString()}"
                 context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                 async.complete()
             }
@@ -108,12 +101,10 @@ class TeamsVerticleTest {
 
         vertx.createHttpClient().put(8080, "localhost", "/teams/1") { response ->
             response.handler { body ->
-                log.debug "body -> ${body.toString()}"
-                context.assertTrue(new JsonSlurper().parseText(body.toString()).success)
+                assertSuccessfulResponse(context, body)
 
                 vertx.createHttpClient().getNow(8080, "localhost", "/teams/1") { listResponse ->
                     listResponse.handler { listBody ->
-                        log.debug "listBody -> ${listBody.toString()}"
                         context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                         async.complete()
                     }
@@ -131,7 +122,7 @@ class TeamsVerticleTest {
 
         vertx.createHttpClient().delete(8080, "localhost", "/teams/1") { response ->
             response.handler { body ->
-                context.assertTrue(new JsonSlurper().parseText(body.toString()).success)
+                assertSuccessfulResponse(context, body)
                 async.complete()
             }
         }.end()
@@ -141,5 +132,9 @@ class TeamsVerticleTest {
         Sql sql = new Sql(dataSource)
         sql.execute("INSERT INTO teams (name) VALUES (:name)", [name: team.name])
         sql.close()
+    }
+
+    private void assertSuccessfulResponse(TestContext context, Buffer body) {
+        context.assertTrue(new JsonSlurper().parseText(body.toString()).success)
     }
 }
