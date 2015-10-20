@@ -11,6 +11,9 @@ import io.vertx.groovy.ext.web.RoutingContext
 import io.vertx.groovy.ext.web.handler.BodyHandler
 import io.vertx.lang.groovy.GroovyVerticle
 
+/**
+ * REST API implementation
+ */
 @CompileStatic
 @Slf4j
 class TeamsVerticle extends GroovyVerticle {

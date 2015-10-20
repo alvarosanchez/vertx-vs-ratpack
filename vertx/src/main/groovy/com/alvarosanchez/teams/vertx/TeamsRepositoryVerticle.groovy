@@ -14,11 +14,15 @@ import org.h2.jdbcx.JdbcConnectionPool
 
 import javax.sql.DataSource
 
+/**
+ * Exposes {@link TeamRepository} through the event bus
+ */
 @Slf4j
 class TeamsRepositoryVerticle extends GroovyVerticle {
 
     TeamRepository repository
 
+    //TODO this should be read from configuration file, but for the sake of the demo, it's enough to be here
     DataSource dataSource = JdbcConnectionPool.create("jdbc:h2:mem:teams", "sa", "")
 
     @Override
