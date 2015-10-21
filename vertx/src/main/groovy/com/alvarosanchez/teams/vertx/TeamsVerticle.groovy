@@ -55,62 +55,61 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     void getTeams(RoutingContext routingContext) {
-        client.getConnection() { connectionResult ->
-            SQLConnection connection = connectionResult.result()
-            connection.query("SELECT * FROM teams") { rs ->
-                List<Team> teams = []
-
-                rs.result().results.each { row ->
-                    teams << new Team(id: row[0], name: row[1])
-                }
-
-                sendResponseBack(routingContext, teams)
-            }
-            connection.close()
+        List<Team> teams = []
+        executeQuery "SELECT * FROM teams", null, { row ->
+            teams << new Team(id: row[0], name: row[1])
+        }, {
+            sendResponseBack(routingContext, teams)
         }
     }
 
     void getTeam(RoutingContext routingContext) {
         Long teamId = routingContext.request().getParam('teamId') as Long
-        client.getConnection() { connectionResult ->
-            SQLConnection connection = connectionResult.result()
-            connection.queryWithParams("SELECT * FROM teams WHERE id = ?", [teamId]) { rs ->
-                rs.result().results.each { row ->
-                    sendResponseBack(routingContext, new Team(id: row[0], name: row[1]))
-                }
-            }
-            connection.close()
+        executeQuery("SELECT * FROM teams WHERE id = ?", [teamId]) { row ->
+            sendResponseBack(routingContext, new Team(id: row[0], name: row[1]))
         }
     }
 
     void createTeam(RoutingContext routingContext) {
         Map<String, Object> body = routingContext.bodyAsJson
-        client.getConnection() { connectionResult ->
-            SQLConnection connection = connectionResult.result()
-            connection.updateWithParams("INSERT INTO teams (name) VALUES (?)", [body.name]) { result ->
-                sendResponseBack(routingContext, [success: result.succeeded()])
-            }
-            connection.close()
-        }
+        executeUpdate(routingContext, "INSERT INTO teams (name) VALUES (?)", [body.name])
     }
 
     void updateTeam(RoutingContext routingContext) {
         Long teamId = routingContext.request().getParam('teamId') as Long
         String name = routingContext.bodyAsJson.name
+        executeUpdate(routingContext, "UPDATE teams SET name = ? WHERE id = ?", [name, teamId])
+    }
+
+    void deleteTeam(RoutingContext routingContext) {
+        Long teamId = routingContext.request().getParam('teamId') as Long
+        executeUpdate(routingContext, "DELETE FROM teams WHERE id = ?", [teamId])
+    }
+
+    private void executeQuery(String sql, List parameters, Closure rowCallback, Closure endCallback = null) {
         client.getConnection() { connectionResult ->
             SQLConnection connection = connectionResult.result()
-            connection.updateWithParams("UPDATE teams SET name = ? WHERE id = ?", [name, teamId]) { result ->
-                sendResponseBack(routingContext, [success: result.succeeded()])
+            Closure doWithRs = { rs ->
+                rs.result().results.each { row ->
+                    rowCallback.call(row)
+                }
+                endCallback?.call()
+            }
+
+            if (parameters) {
+                connection.queryWithParams(sql, parameters, doWithRs)
+            } else {
+                connection.query(sql, doWithRs)
             }
             connection.close()
         }
     }
 
-    void deleteTeam(RoutingContext routingContext) {
-        Long teamId = routingContext.request().getParam('teamId') as Long
+
+    private void executeUpdate(RoutingContext routingContext, String sql, List parameters) {
         client.getConnection() { connectionResult ->
             SQLConnection connection = connectionResult.result()
-            connection.updateWithParams("DELETE FROM teams WHERE id = ?", [teamId]) { result ->
+            connection.updateWithParams(sql, parameters) { result ->
                 sendResponseBack(routingContext, [success: result.succeeded()])
             }
             connection.close()
