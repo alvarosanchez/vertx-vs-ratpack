@@ -3,6 +3,7 @@ package com.alvarosanchez.teams.vertx
 import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
 import io.vertx.core.Future
+import io.vertx.core.Handler
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.sql.ResultSet
@@ -10,10 +11,14 @@ import io.vertx.groovy.ext.web.Router
 import io.vertx.groovy.ext.web.RoutingContext
 import io.vertx.groovy.ext.web.handler.BodyHandler
 import io.vertx.lang.groovy.GroovyVerticle
+import io.vertx.rx.java.ObservableHandler
+import io.vertx.rx.java.RxHelper
 import io.vertx.rxjava.core.Vertx
 import io.vertx.rxjava.ext.jdbc.JDBCClient
-import io.vertx.rxjava.ext.sql.SQLConnection
 import rx.Observable
+import rx.Observer
+import rx.Subscription
+import rx.observers.Observers
 
 
 /**
@@ -31,11 +36,11 @@ class TeamsVerticle extends GroovyVerticle {
 
         router.route().handler(BodyHandler.create())
 
-        router.get("/teams").handler(this.&getTeams)
-        router.get("/teams/:teamId").handler(this.&getTeam)
-        router.post("/teams").handler(this.&createTeam)
-        router.put("/teams/:teamId").handler(this.&updateTeam)
-        router.delete("/teams/:teamId").handler(this.&deleteTeam)
+        router.get("/teams").handler(this.getTeams())
+        router.get("/teams/:teamId").handler(this.getTeam())
+        router.post("/teams").handler(this.createTeam())
+        router.put("/teams/:teamId").handler(this.updateTeam())
+        router.delete("/teams/:teamId").handler(this.deleteTeam())
 
         //TODO this should be read from configuration file, but for the sake of the demo, it's enough to be here
         client = JDBCClient.createShared(Vertx.newInstance(vertx.delegate), [
@@ -60,39 +65,49 @@ class TeamsVerticle extends GroovyVerticle {
         }
     }
 
-    void getTeams(RoutingContext routingContext) {
-        List<Team> teams = []
-        executeQuery "SELECT * FROM teams", null, { row ->
-            teams << new Team(id: row[0], name: row[1])
-        }, {
-            sendResponseBack(routingContext, teams)
-        }
+    Handler getTeams() {
+        Observers.create { RoutingContext routingContext ->
+            List<Team> teams = []
+            executeQuery "SELECT * FROM teams", null, { row ->
+                teams << new Team(id: row[0], name: row[1])
+            }, {
+                sendResponseBack(routingContext, teams)
+            }
+        }.toHandler()
     }
 
-    void getTeam(RoutingContext routingContext) {
-        Long teamId = routingContext.request().getParam('teamId') as Long
-        executeQuery("SELECT * FROM teams WHERE id = ?", [teamId]) { row ->
-            sendResponseBack(routingContext, new Team(id: row[0], name: row[1]))
-        }
+    Handler getTeam() {
+        Observers.create { RoutingContext routingContext ->
+            Long teamId = routingContext.request().getParam('teamId') as Long
+            executeQuery("SELECT * FROM teams WHERE id = ?", [teamId]) { row ->
+                sendResponseBack(routingContext, new Team(id: row[0], name: row[1]))
+            }
+        }.toHandler()
     }
 
-    void createTeam(RoutingContext routingContext) {
-        Map<String, Object> body = routingContext.bodyAsJson
-        executeUpdate(routingContext, "INSERT INTO teams (name) VALUES (?)", [body.name])
+    Handler createTeam() {
+        Observers.create { RoutingContext routingContext ->
+            Map<String, Object> body = routingContext.bodyAsJson
+            executeUpdate(routingContext, "INSERT INTO teams (name) VALUES (?)", [body.name])
+        }.toHandler()
     }
 
-    void updateTeam(RoutingContext routingContext) {
-        Long teamId = routingContext.request().getParam('teamId') as Long
-        String name = routingContext.bodyAsJson.name
-        executeUpdate(routingContext, "UPDATE teams SET name = ? WHERE id = ?", [name, teamId])
+    Handler updateTeam() {
+        Observers.create { RoutingContext routingContext ->
+            Long teamId = routingContext.request().getParam('teamId') as Long
+            String name = routingContext.bodyAsJson.name
+            executeUpdate(routingContext, "UPDATE teams SET name = ? WHERE id = ?", [name, teamId])
+        }.toHandler()
     }
 
-    void deleteTeam(RoutingContext routingContext) {
-        Long teamId = routingContext.request().getParam('teamId') as Long
-        executeUpdate(routingContext, "DELETE FROM teams WHERE id = ?", [teamId])
+    Handler deleteTeam() {
+        Observers.create { RoutingContext routingContext ->
+            Long teamId = routingContext.request().getParam('teamId') as Long
+            executeUpdate(routingContext, "DELETE FROM teams WHERE id = ?", [teamId])
+        }.toHandler()
     }
 
-    private void executeQuery(String sql, List parameters, Closure rowCallback, Closure endCallback = null) {
+    private Subscription executeQuery(String sql, List parameters, Closure rowCallback, Closure endCallback = null) {
         client.connectionObservable.subscribe { connection ->
             Closure doWithResultSet = { ResultSet rs ->
                 rs.results.each { row ->
@@ -111,7 +126,7 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
 
-    private void executeUpdate(RoutingContext routingContext, String sql, List parameters) {
+    private Subscription executeUpdate(RoutingContext routingContext, String sql, List parameters) {
         client.connectionObservable.subscribe { connection ->
             connection.updateWithParamsObservable(sql, new JsonArray(parameters)).subscribe { result ->
                 sendResponseBack(routingContext, [success: result.updated as boolean])
