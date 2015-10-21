@@ -2,6 +2,7 @@ package com.alvarosanchez.teams.vertx
 
 import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
+import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonArray
@@ -14,6 +15,7 @@ import io.vertx.lang.groovy.GroovyVerticle
 import io.vertx.rx.java.ObservableHandler
 import io.vertx.rx.java.RxHelper
 import io.vertx.rxjava.core.Vertx
+import io.vertx.rxjava.core.http.HttpServer
 import io.vertx.rxjava.ext.jdbc.JDBCClient
 import rx.Observable
 import rx.Observer
@@ -29,9 +31,12 @@ class TeamsVerticle extends GroovyVerticle {
 
     JDBCClient client
 
+    Vertx rxVertx
+
     @Override
     void start(Future<Void> startFuture) throws Exception {
         log.debug "Starting Verticle"
+        rxVertx = Vertx.newInstance(vertx.delegate)
         def router = Router.router(vertx)
 
         router.route().handler(BodyHandler.create())
@@ -43,7 +48,7 @@ class TeamsVerticle extends GroovyVerticle {
         router.delete("/teams/:teamId").handler(this.deleteTeam())
 
         //TODO this should be read from configuration file, but for the sake of the demo, it's enough to be here
-        client = JDBCClient.createShared(Vertx.newInstance(vertx.delegate), [
+        client = JDBCClient.createShared(rxVertx, [
             url: "jdbc:h2:mem:teams",
             user: "sa",
             password: "",
@@ -53,9 +58,8 @@ class TeamsVerticle extends GroovyVerticle {
 
         vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { listeningResult ->
             if (listeningResult.succeeded()) {
-                client.getConnection() { connectionResult ->
-                    connectionResult.result().execute('CREATE TABLE teams(id int auto_increment, name varchar(255))') { createResult ->
-                        log.debug "Deployment completed"
+                client.connectionObservable.subscribe { connection ->
+                    connection.executeObservable('CREATE TABLE teams(id int auto_increment, name varchar(255))').subscribe {
                         startFuture.complete()
                     }
                 }
