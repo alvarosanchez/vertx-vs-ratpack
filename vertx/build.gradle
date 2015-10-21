@@ -31,9 +31,10 @@ dependencies {
     compile "io.vertx:vertx-lang-groovy:$vertxVersion", {
         exclude module: 'groovy-all'
     }
+    compile 'org.codehaus.groovy:groovy-all:2.4.5'
     compile "io.vertx:vertx-web:$vertxVersion"
     compile "io.vertx:vertx-jdbc-client:$vertxVersion"
-    compile 'org.codehaus.groovy:groovy-all:2.4.5'
+    compile "io.vertx:vertx-rx-groovy:$vertxVersion"
 
     compile 'com.h2database:h2:1.4.190'
 

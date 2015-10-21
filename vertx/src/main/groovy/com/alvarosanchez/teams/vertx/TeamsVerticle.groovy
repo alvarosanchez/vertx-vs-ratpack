@@ -3,12 +3,18 @@ package com.alvarosanchez.teams.vertx
 import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
 import io.vertx.core.Future
-import io.vertx.groovy.ext.jdbc.JDBCClient
-import io.vertx.groovy.ext.sql.SQLConnection
+import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
+import io.vertx.ext.sql.ResultSet
 import io.vertx.groovy.ext.web.Router
 import io.vertx.groovy.ext.web.RoutingContext
 import io.vertx.groovy.ext.web.handler.BodyHandler
 import io.vertx.lang.groovy.GroovyVerticle
+import io.vertx.rxjava.core.Vertx
+import io.vertx.rxjava.ext.jdbc.JDBCClient
+import io.vertx.rxjava.ext.sql.SQLConnection
+import rx.Observable
+
 
 /**
  * REST API implementation
@@ -32,13 +38,13 @@ class TeamsVerticle extends GroovyVerticle {
         router.delete("/teams/:teamId").handler(this.&deleteTeam)
 
         //TODO this should be read from configuration file, but for the sake of the demo, it's enough to be here
-        client = JDBCClient.createShared(vertx, [
+        client = JDBCClient.createShared(Vertx.newInstance(vertx.delegate), [
             url: "jdbc:h2:mem:teams",
             user: "sa",
             password: "",
             driver_class: "org.h2.Driver",
             max_pool_size: 30
-        ])
+        ] as JsonObject)
 
         vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { listeningResult ->
             if (listeningResult.succeeded()) {
@@ -87,19 +93,18 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     private void executeQuery(String sql, List parameters, Closure rowCallback, Closure endCallback = null) {
-        client.getConnection() { connectionResult ->
-            SQLConnection connection = connectionResult.result()
-            Closure doWithRs = { rs ->
-                rs.result().results.each { row ->
+        client.connectionObservable.subscribe { connection ->
+            Closure doWithResultSet = { ResultSet rs ->
+                rs.results.each { row ->
                     rowCallback.call(row)
                 }
                 endCallback?.call()
             }
 
             if (parameters) {
-                connection.queryWithParams(sql, parameters, doWithRs)
+                connection.queryWithParamsObservable(sql, new JsonArray(parameters)).subscribe(doWithResultSet)
             } else {
-                connection.query(sql, doWithRs)
+                connection.queryObservable(sql).subscribe(doWithResultSet)
             }
             connection.close()
         }
@@ -107,10 +112,9 @@ class TeamsVerticle extends GroovyVerticle {
 
 
     private void executeUpdate(RoutingContext routingContext, String sql, List parameters) {
-        client.getConnection() { connectionResult ->
-            SQLConnection connection = connectionResult.result()
-            connection.updateWithParams(sql, parameters) { result ->
-                sendResponseBack(routingContext, [success: result.succeeded()])
+        client.connectionObservable.subscribe { connection ->
+            connection.updateWithParamsObservable(sql, new JsonArray(parameters)).subscribe { result ->
+                sendResponseBack(routingContext, [success: result.updated as boolean])
             }
             connection.close()
         }
@@ -118,10 +122,8 @@ class TeamsVerticle extends GroovyVerticle {
 
     @Override
     void stop() throws Exception {
-        client.getConnection() { connectionResult ->
-            connectionResult.result().execute("DROP ALL OBJECTS DELETE FILES") {
-                assert it.succeeded()
-            }
+        client.connectionObservable.subscribe { connection ->
+            connection.executeObservable("DROP ALL OBJECTS DELETE FILES")
         }
     }
 

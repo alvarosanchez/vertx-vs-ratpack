@@ -1,9 +1,19 @@
+import ratpack.handling.RequestLogger
+
 import static ratpack.groovy.Groovy.ratpack
 
 ratpack {
   handlers {
-    all {
-      render "Hello World"
+
+    all(RequestLogger.ncsa())
+
+    prefix('teams') {
+
+      get(':teamId') {
+
+      }
+
     }
+
   }
 }
