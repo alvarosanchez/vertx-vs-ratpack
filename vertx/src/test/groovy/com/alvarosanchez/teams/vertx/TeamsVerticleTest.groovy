@@ -1,6 +1,5 @@
 package com.alvarosanchez.teams.vertx
 
-import com.alvarosanchez.teams.core.Team
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.sql.Sql

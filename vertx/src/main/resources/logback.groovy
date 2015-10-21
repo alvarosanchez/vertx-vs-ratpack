@@ -3,6 +3,7 @@ import ch.qos.logback.core.ConsoleAppender
 
 import static ch.qos.logback.classic.Level.DEBUG
 import static ch.qos.logback.classic.Level.INFO
+import static ch.qos.logback.classic.Level.OFF
 
 appender("STDOUT", ConsoleAppender) {
     encoder(PatternLayoutEncoder) {
@@ -11,5 +12,7 @@ appender("STDOUT", ConsoleAppender) {
 }
 logger("io.vertx", DEBUG)
 logger("com.alvarosanchez.teams", DEBUG)
+
+logger("com.mchange.v2", OFF)
 
 root(INFO, ["STDOUT"])

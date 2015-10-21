@@ -1,4 +1,4 @@
-package com.alvarosanchez.teams.core
+package com.alvarosanchez.teams.vertx
 
 class Team {
 

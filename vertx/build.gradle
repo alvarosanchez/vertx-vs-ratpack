@@ -33,7 +33,7 @@ dependencies {
     }
     compile "io.vertx:vertx-web:$vertxVersion"
     compile "io.vertx:vertx-jdbc-client:$vertxVersion"
-    compile project(':teams-core')
+    compile 'org.codehaus.groovy:groovy-all:2.4.5'
 
     compile 'com.h2database:h2:1.4.190'
 

@@ -24,8 +24,6 @@ dependencies {
   // See here for a non blocking appender http://logging.apache.org/log4j/2.x/manual/async.html
   runtime 'ch.qos.logback:logback-classic:1.1.3'
 
-  compile project(':teams-core')
-
   testCompile "org.spockframework:spock-core:1.0-groovy-2.4"
 }
 
