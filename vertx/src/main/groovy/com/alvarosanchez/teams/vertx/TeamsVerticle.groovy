@@ -2,23 +2,20 @@ package com.alvarosanchez.teams.vertx
 
 import groovy.json.JsonOutput
 import groovy.util.logging.Slf4j
-import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.sql.ResultSet
+import io.vertx.groovy.core.http.HttpServer
+import io.vertx.groovy.ext.auth.jwt.JWTAuth
 import io.vertx.groovy.ext.web.Router
 import io.vertx.groovy.ext.web.RoutingContext
 import io.vertx.groovy.ext.web.handler.BodyHandler
+import io.vertx.groovy.ext.web.handler.JWTAuthHandler
 import io.vertx.lang.groovy.GroovyVerticle
-import io.vertx.rx.java.ObservableHandler
-import io.vertx.rx.java.RxHelper
 import io.vertx.rxjava.core.Vertx
-import io.vertx.rxjava.core.http.HttpServer
 import io.vertx.rxjava.ext.jdbc.JDBCClient
-import rx.Observable
-import rx.Observer
 import rx.Subscription
 import rx.observers.Observers
 
@@ -29,36 +26,28 @@ import rx.observers.Observers
 @Slf4j
 class TeamsVerticle extends GroovyVerticle {
 
-    JDBCClient client
+    JDBCClient jdbc
 
     Vertx rxVertx
+
+    JWTAuth authProvider
 
     @Override
     void start(Future<Void> startFuture) throws Exception {
         log.debug "Starting Verticle"
         rxVertx = Vertx.newInstance(vertx.delegate)
-        def router = Router.router(vertx)
 
-        router.route().handler(BodyHandler.create())
+        setupJdbcClient(rxVertx)
+        setupAuthProvider()
 
-        router.get("/teams").handler(this.getTeams())
-        router.get("/teams/:teamId").handler(this.getTeam())
-        router.post("/teams").handler(this.createTeam())
-        router.put("/teams/:teamId").handler(this.updateTeam())
-        router.delete("/teams/:teamId").handler(this.deleteTeam())
+        Router router = setupRoutes()
+        setupHttpServer(router, startFuture, jdbc)
+    }
 
-        //TODO this should be read from configuration file, but for the sake of the demo, it's enough to be here
-        client = JDBCClient.createShared(rxVertx, [
-            url: "jdbc:h2:mem:teams",
-            user: "sa",
-            password: "",
-            driver_class: "org.h2.Driver",
-            max_pool_size: 30
-        ] as JsonObject)
-
-        vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { listeningResult ->
+    private HttpServer setupHttpServer(Router router, startFuture, jdbc) {
+        return vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { listeningResult ->
             if (listeningResult.succeeded()) {
-                client.connectionObservable.subscribe { connection ->
+                jdbc.connectionObservable.subscribe { connection ->
                     connection.executeObservable('CREATE TABLE teams(id int auto_increment, name varchar(255))').subscribe {
                         startFuture.complete()
                     }
@@ -67,6 +56,45 @@ class TeamsVerticle extends GroovyVerticle {
                 startFuture.fail(listeningResult.cause())
             }
         }
+    }
+
+    private void setupAuthProvider() {
+        authProvider = JWTAuth.create(vertx, [
+            keyStore: [
+                path    : "keystore.jceks",
+                type    : "jceks",
+                password: "secret"
+            ]
+        ])
+    }
+
+    private Router setupRoutes() {
+        Router router = Router.router(vertx)
+
+        router.route().handler(BodyHandler.create())
+
+        router.route("/teams*").handler(JWTAuthHandler.create(authProvider))
+        router.route("/login").handler { RoutingContext ctx ->
+            ctx.response().end(authProvider.generateToken([sub: 'alvaro.sanchez'], [expiresInSeconds: 60]));
+        }
+
+        router.get("/teams").handler(this.getTeams())
+        router.get("/teams/:teamId").handler(this.getTeam())
+        router.post("/teams").handler(this.createTeam())
+        router.put("/teams/:teamId").handler(this.updateTeam())
+        router.delete("/teams/:teamId").handler(this.deleteTeam())
+        return router
+    }
+
+    private JDBCClient setupJdbcClient(Vertx rxVertx) {
+        jdbc = JDBCClient.createShared(rxVertx, [
+                url          : "jdbc:h2:mem:teams",
+                user         : "sa",
+                password     : "",
+                driver_class : "org.h2.Driver",
+                max_pool_size: 30
+        ] as JsonObject)
+        return jdbc
     }
 
     Handler getTeams() {
@@ -112,7 +140,7 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     private Subscription executeQuery(String sql, List parameters, Closure rowCallback, Closure endCallback = null) {
-        client.connectionObservable.subscribe { connection ->
+        jdbc.connectionObservable.subscribe { connection ->
             Closure doWithResultSet = { ResultSet rs ->
                 rs.results.each { row ->
                     rowCallback.call(row)
@@ -131,7 +159,7 @@ class TeamsVerticle extends GroovyVerticle {
 
 
     private Subscription executeUpdate(RoutingContext routingContext, String sql, List parameters) {
-        client.connectionObservable.subscribe { connection ->
+        jdbc.connectionObservable.subscribe { connection ->
             connection.updateWithParamsObservable(sql, new JsonArray(parameters)).subscribe { result ->
                 sendResponseBack(routingContext, [success: result.updated as boolean])
             }
@@ -141,7 +169,7 @@ class TeamsVerticle extends GroovyVerticle {
 
     @Override
     void stop() throws Exception {
-        client.connectionObservable.subscribe { connection ->
+        jdbc.connectionObservable.subscribe { connection ->
             connection.executeObservable("DROP ALL OBJECTS DELETE FILES")
         }
     }

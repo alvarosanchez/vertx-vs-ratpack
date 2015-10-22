@@ -58,5 +58,12 @@ shadowJar {
     mergeServiceFiles {
         include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
     }
-    mergeGroovyExtensionModules()
+}
+
+test {
+    testLogging {
+        exceptionFormat = 'full'
+        events "failed", "standardOut", "standardError"
+        outputs.upToDateWhen { false }
+    }
 }

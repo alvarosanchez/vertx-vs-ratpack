@@ -37,23 +37,34 @@ class TeamsVerticleTest {
     }
 
     @Test
+    public void authenticatedApi(TestContext context) {
+        final Async async = context.async()
+
+        vertx.createHttpClient().getNow(8080, "localhost", "/teams") { response ->
+            context.assertTrue(response.statusCode() == 401)
+            async.complete()
+        }
+    }
+
+    @Test
     public void listTeams(TestContext context) {
         final Async async = context.async()
 
         create(new Team(name: 'Real Madrid CF'))
         create(new Team(name: 'FC Barcelona'))
 
-        vertx.createHttpClient().getNow(8080, "localhost", "/teams") { response ->
+        vertx.createHttpClient().get(8080, "localhost", "/teams") { response ->
             response.handler { body ->
                 context.assertTrue(new JsonSlurper().parseText(body.toString()).size() == 2)
                 async.complete()
             }
-        }
+        }.putHeader('Authorization', "Bearer ${token}").end()
     }
 
     @Test
     public void createTeam(TestContext context) {
         final Async async = context.async()
+        String token = getToken()
 
         Team team = new Team(name: 'Real Madrid CF')
         String requestBody = JsonOutput.toJson(name: team.name)
@@ -62,16 +73,16 @@ class TeamsVerticleTest {
             response.handler { body ->
                 assertSuccessfulResponse(context, body)
 
-                vertx.createHttpClient().getNow(8080, "localhost", "/teams/1") { listResponse ->
+                vertx.createHttpClient().get(8080, "localhost", "/teams/1") { listResponse ->
                     listResponse.handler { listBody ->
                         context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                         async.complete()
                     }
-                }
+                }.putHeader('Authorization', "Bearer ${token}").end()
 
 
             }
-        }.putHeader('Content-Type', 'application/json').end(requestBody)
+        }.putHeader('Authorization', "Bearer ${token}").putHeader('Content-Type', 'application/json').end(requestBody)
     }
 
     @Test
@@ -81,17 +92,18 @@ class TeamsVerticleTest {
         Team team = new Team(name: 'Real Madrid CF')
         create(team)
 
-        vertx.createHttpClient().getNow(8080, "localhost", "/teams/1") { listResponse ->
+        vertx.createHttpClient().get(8080, "localhost", "/teams/1") { listResponse ->
             listResponse.handler { listBody ->
                 context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                 async.complete()
             }
-        }
+        }.putHeader('Authorization', "Bearer ${token}").end()
     }
 
     @Test
     public void updateTeam(TestContext context) {
         final Async async = context.async()
+        String token = getToken()
 
         Team team = new Team(name: 'Real Madrid CF')
         create(team)
@@ -102,14 +114,14 @@ class TeamsVerticleTest {
             response.handler { body ->
                 assertSuccessfulResponse(context, body)
 
-                vertx.createHttpClient().getNow(8080, "localhost", "/teams/1") { listResponse ->
+                vertx.createHttpClient().get(8080, "localhost", "/teams/1") { listResponse ->
                     listResponse.handler { listBody ->
                         context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                         async.complete()
                     }
-                }
+                }.putHeader('Authorization', "Bearer ${token}").end()
             }
-        }.putHeader('Content-Type', 'application/json').end(JsonOutput.toJson(name: team.name))
+        }.putHeader('Authorization', "Bearer ${token}").putHeader('Content-Type', 'application/json').end(JsonOutput.toJson(name: team.name))
     }
 
     @Test
@@ -124,7 +136,7 @@ class TeamsVerticleTest {
                 assertSuccessfulResponse(context, body)
                 async.complete()
             }
-        }.end()
+        }.putHeader('Authorization', "Bearer ${token}").end()
     }
 
     private void create(Team team) {
@@ -135,5 +147,9 @@ class TeamsVerticleTest {
 
     private void assertSuccessfulResponse(TestContext context, Buffer body) {
         context.assertTrue(new JsonSlurper().parseText(body.toString()).success)
+    }
+
+    private String getToken() {
+        new URL('http://localhost:8080/login').text
     }
 }
