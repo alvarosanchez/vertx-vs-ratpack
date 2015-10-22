@@ -35,6 +35,7 @@ dependencies {
     compile "io.vertx:vertx-web:$vertxVersion"
     compile "io.vertx:vertx-jdbc-client:$vertxVersion"
     compile "io.vertx:vertx-rx-groovy:$vertxVersion"
+    compile "io.vertx:vertx-auth-jwt:$vertxVersion"
 
     compile 'com.h2database:h2:1.4.190'
 
@@ -52,17 +53,10 @@ shadowJar {
     classifier = 'fat'
     manifest {
         attributes 'Main-Class': 'io.vertx.core.Launcher'
-        attributes 'Main-Verticle': 'TeamsVerticle.groovy'
+        attributes 'Main-Verticle': 'groovy:com.alvarosanchez.teams.vertx.TeamsVerticle'
     }
     mergeServiceFiles {
         include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
     }
-}
-
-test {
-    testLogging {
-        exceptionFormat = 'full'
-        events "failed", "standardOut", "standardError"
-        outputs.upToDateWhen { false }
-    }
+    mergeGroovyExtensionModules()
 }
