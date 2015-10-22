@@ -3,6 +3,7 @@ package com.alvarosanchez.teams.vertx
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.sql.Sql
+import io.vertx.core.DeploymentOptions
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.ext.unit.Async
@@ -22,13 +23,19 @@ class TeamsVerticleTest {
     Vertx vertx
 
     DataSource dataSource
+    
+    Integer port
 
     @Before
     public void setUp(TestContext context) {
+        Properties config = new Properties()
+        config.load(this.getClass().classLoader.getResourceAsStream('teams.properties'))
+        port = config.getProperty('server.port') as Integer
+        def options = [ "config" : config as Map ] as DeploymentOptions
         vertx = Vertx.vertx()
-        vertx.deployVerticle('groovy:com.alvarosanchez.teams.vertx.TeamsVerticle', context.asyncAssertSuccess())
+        vertx.deployVerticle('groovy:'+TeamsVerticle.class.name, options, context.asyncAssertSuccess())
 
-        dataSource = JdbcConnectionPool.create("jdbc:h2:mem:teams", "sa", "")
+        dataSource = JdbcConnectionPool.create(config.getProperty('jdbc.url'), config.getProperty('jdbc.user'), config.getProperty('jdbc.password'))
     }
 
     @After
@@ -40,7 +47,7 @@ class TeamsVerticleTest {
     public void authenticatedApi(TestContext context) {
         final Async async = context.async()
 
-        vertx.createHttpClient().getNow(8080, "localhost", "/teams") { response ->
+        vertx.createHttpClient().getNow(port, "localhost", "/teams") { response ->
             context.assertTrue(response.statusCode() == 401)
             async.complete()
         }
@@ -53,7 +60,7 @@ class TeamsVerticleTest {
         create(new Team(name: 'Real Madrid CF'))
         create(new Team(name: 'FC Barcelona'))
 
-        vertx.createHttpClient().get(8080, "localhost", "/teams") { response ->
+        vertx.createHttpClient().get(port, "localhost", "/teams") { response ->
             response.handler { body ->
                 context.assertTrue(new JsonSlurper().parseText(body.toString()).size() == 2)
                 async.complete()
@@ -69,11 +76,11 @@ class TeamsVerticleTest {
         Team team = new Team(name: 'Real Madrid CF')
         String requestBody = JsonOutput.toJson(name: team.name)
 
-        vertx.createHttpClient().post(8080, "localhost", "/teams") { response ->
+        vertx.createHttpClient().post(port, "localhost", "/teams") { response ->
             response.handler { body ->
                 assertSuccessfulResponse(context, body)
 
-                vertx.createHttpClient().get(8080, "localhost", "/teams/1") { listResponse ->
+                vertx.createHttpClient().get(port, "localhost", "/teams/1") { listResponse ->
                     listResponse.handler { listBody ->
                         context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                         async.complete()
@@ -92,7 +99,7 @@ class TeamsVerticleTest {
         Team team = new Team(name: 'Real Madrid CF')
         create(team)
 
-        vertx.createHttpClient().get(8080, "localhost", "/teams/1") { listResponse ->
+        vertx.createHttpClient().get(port, "localhost", "/teams/1") { listResponse ->
             listResponse.handler { listBody ->
                 context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                 async.complete()
@@ -110,11 +117,11 @@ class TeamsVerticleTest {
 
         team.name += ', best club of the 20th century'
 
-        vertx.createHttpClient().put(8080, "localhost", "/teams/1") { response ->
+        vertx.createHttpClient().put(port, "localhost", "/teams/1") { response ->
             response.handler { body ->
                 assertSuccessfulResponse(context, body)
 
-                vertx.createHttpClient().get(8080, "localhost", "/teams/1") { listResponse ->
+                vertx.createHttpClient().get(port, "localhost", "/teams/1") { listResponse ->
                     listResponse.handler { listBody ->
                         context.assertTrue(listBody.toString().equals(JsonOutput.toJson(new Team(id: 1, name: team.name))))
                         async.complete()
@@ -131,7 +138,7 @@ class TeamsVerticleTest {
         Team team = new Team(name: 'Real Madrid CF')
         create(team)
 
-        vertx.createHttpClient().delete(8080, "localhost", "/teams/1") { response ->
+        vertx.createHttpClient().delete(port, "localhost", "/teams/1") { response ->
             response.handler { body ->
                 assertSuccessfulResponse(context, body)
                 async.complete()
@@ -150,6 +157,6 @@ class TeamsVerticleTest {
     }
 
     private String getToken() {
-        new URL('http://localhost:8080/login').text
+        new URL("http://localhost:${port}/login").text
     }
 }

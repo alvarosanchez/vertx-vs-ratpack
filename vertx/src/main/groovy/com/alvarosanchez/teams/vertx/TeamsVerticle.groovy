@@ -26,6 +26,8 @@ import rx.observers.Observers
 @Slf4j
 class TeamsVerticle extends GroovyVerticle {
 
+    Map<String, Object> config
+
     JDBCClient jdbc
 
     Vertx rxVertx
@@ -37,6 +39,8 @@ class TeamsVerticle extends GroovyVerticle {
         log.debug "Starting Verticle"
         rxVertx = Vertx.newInstance(vertx.delegate)
 
+        config = vertx.getOrCreateContext().config()
+
         setupJdbcClient(rxVertx)
         setupAuthProvider()
 
@@ -45,7 +49,7 @@ class TeamsVerticle extends GroovyVerticle {
     }
 
     private HttpServer setupHttpServer(Router router, startFuture, jdbc) {
-        return vertx.createHttpServer().requestHandler(router.&accept).listen(8080) { listeningResult ->
+        return vertx.createHttpServer().requestHandler(router.&accept).listen(config.get('server.port') as Integer) { listeningResult ->
             if (listeningResult.succeeded()) {
                 jdbc.connectionObservable.subscribe { connection ->
                     connection.executeObservable('CREATE TABLE teams(id int auto_increment, name varchar(255))').subscribe {
@@ -61,9 +65,9 @@ class TeamsVerticle extends GroovyVerticle {
     private void setupAuthProvider() {
         authProvider = JWTAuth.create(vertx, [
             keyStore: [
-                path    : "keystore.jceks",
-                type    : "jceks",
-                password: "secret"
+                path    : config.get('keyStore.path'),
+                type    : config.get('keyStore.type'),
+                password: config.get('keyStore.password')
             ]
         ])
     }
@@ -88,11 +92,10 @@ class TeamsVerticle extends GroovyVerticle {
 
     private JDBCClient setupJdbcClient(Vertx rxVertx) {
         jdbc = JDBCClient.createShared(rxVertx, [
-                url          : "jdbc:h2:mem:teams",
-                user         : "sa",
-                password     : "",
-                driver_class : "org.h2.Driver",
-                max_pool_size: 30
+                url          : config.get('jdbc.url'),
+                user         : config.get('jdbc.user'),
+                password     : config.get('jdbc.password'),
+                driver_class : config.get('jdbc.driver_class')
         ] as JsonObject)
         return jdbc
     }
