@@ -1,5 +1,6 @@
 package com.alvarosanchez.teams.ratpack
 
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.sql.Sql
 import org.h2.jdbcx.JdbcConnectionPool
@@ -39,6 +40,12 @@ class ApplicationSpec extends Specification {
         requestSpec { it.headers.add('Authorization', "Bearer ${token}") }
     }
 
+    void cleanup() {
+        Sql sql = new Sql(dataSource)
+        sql.executeInsert("DROP ALL OBJECTS DELETE FILES")
+        sql.executeInsert('CREATE TABLE teams(id int auto_increment, name varchar(255))')
+    }
+
     void 'API is protected'() {
         given:
         requestSpec { it.headers.clear() }
@@ -60,6 +67,41 @@ class ApplicationSpec extends Specification {
 
         then:
         new JsonSlurper().parseText(response.body.text).size() == 2
+    }
+
+    void 'it can find team by id'() {
+        given:
+        create(new Team(name: 'Real Madrid CF'))
+
+        when:
+        get('teams/1')
+
+        then:
+        new JsonSlurper().parseText(response.body.text).name == 'Real Madrid CF'
+    }
+
+    void 'it can modify teams'() {
+        given:
+        create(new Team(name: 'Real Madrid CF'))
+        requestSpec { spec ->
+            spec.headers.add('Authorization', "Bearer ${token}")
+            spec.body { b ->
+                b.type('application/json').text(JsonOutput.toJson(name: 'Real Madrid Club de Fútbol'))
+            }
+        }
+
+        when:
+        put('teams/1')
+
+        then:
+        new JsonSlurper().parseText(response.body.text).success
+
+        when:
+        get('teams/1')
+
+        then:
+        new JsonSlurper().parseText(response.body.text).name == 'Real Madrid Club de Fútbol'
+
     }
 
     private void create(Team team) {

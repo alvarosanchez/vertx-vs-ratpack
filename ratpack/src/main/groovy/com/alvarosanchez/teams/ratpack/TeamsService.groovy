@@ -1,5 +1,6 @@
 package com.alvarosanchez.teams.ratpack
 
+import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
 import groovy.util.logging.Slf4j
 import ratpack.exec.Blocking
@@ -36,9 +37,25 @@ class TeamsService implements Service {
     Observable<Team> list() {
         observeEach(Blocking.get {
             sql.rows('SELECT * FROM teams')
-        }).map { row ->
-            return new Team(id: row.id, name: row.name)
-        }
+        }).map team
     }
+
+    Observable<Team> findById(Long id) {
+        observe(Blocking.get {
+            sql.firstRow('SELECT * FROM teams WHERE id = :teamId', [teamId: id])
+        }).map team
+    }
+
+    Observable<Integer> update(Team team) {
+        observe(Blocking.get {
+            sql.executeUpdate('UPDATE teams SET name = :name WHERE id = :id', [name: team.name, id: team.id])
+        })
+
+    }
+
+    private team = { GroovyRowResult row ->
+        return new Team(id: row.id, name: row.name)
+    }
+
 
 }
