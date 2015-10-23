@@ -12,11 +12,10 @@ ratpack {
   }
 
   bindings {
-
     module SqlModule
     module H2Module
 
-    bindInstance TeamsService
+    bind TeamsService
   }
 
   handlers {
