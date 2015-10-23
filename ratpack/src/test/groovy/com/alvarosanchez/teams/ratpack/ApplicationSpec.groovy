@@ -57,6 +57,28 @@ class ApplicationSpec extends Specification {
         response.statusCode == 401
     }
 
+    void 'it can create teams'() {
+        given:
+        requestSpec { spec ->
+            spec.headers.add('Authorization', "Bearer ${token}")
+            spec.body { b ->
+                b.type('application/json').text(JsonOutput.toJson(name: 'Real Madrid CF'))
+            }
+        }
+
+        when:
+        post('teams')
+
+        then:
+        new JsonSlurper().parseText(response.body.text).success
+
+        when:
+        get('teams/1')
+
+        then:
+        new JsonSlurper().parseText(response.body.text).name == 'Real Madrid CF'
+    }
+
     void 'it can list teams'() {
         given:
         create(new Team(name: 'Real Madrid CF'))
@@ -101,7 +123,17 @@ class ApplicationSpec extends Specification {
 
         then:
         new JsonSlurper().parseText(response.body.text).name == 'Real Madrid Club de Fútbol'
+    }
 
+    void 'it can delete teams'() {
+        given:
+        create(new Team(name: 'Real Madrid CF'))
+
+        when:
+        delete('teams/1')
+
+        then:
+        new JsonSlurper().parseText(response.body.text).success
     }
 
     private void create(Team team) {

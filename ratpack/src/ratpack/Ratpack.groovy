@@ -7,7 +7,9 @@ import ratpack.groovy.sql.SqlModule
 import ratpack.h2.H2Module
 import ratpack.handling.RequestLogger
 
+import static ratpack.groovy.Groovy.groovyHandler
 import static ratpack.groovy.Groovy.ratpack
+import static ratpack.jackson.Jackson.fromJson
 
 ratpack {
 
@@ -23,8 +25,6 @@ ratpack {
   }
 
   handlers { TeamsService teamsService ->
-
-    all RequestLogger.ncsa()
 
     post('login', JwtAuthentication.login())
 
@@ -53,13 +53,35 @@ ratpack {
             }
           }
 
+          delete {
+            teamsService.delete(allPathTokens.asLong('teamId')).subscribe {
+              response.send JsonOutput.toJson(success: it > 0)
+            }
+          }
+
         }
       }
 
-      get {
-        teamsService.list().toList().subscribe { List<Team> teams ->
-          response.send JsonOutput.toJson(teams)
+      path {
+        byMethod {
+
+          get {
+            teamsService.list().toList().subscribe { List<Team> teams ->
+              response.send JsonOutput.toJson(teams)
+            }
+          }
+
+          post {
+            request.body.then{ body ->
+              String name = new JsonSlurper().parseText(body.text).name
+              teamsService.create(name).subscribe {
+                response.send JsonOutput.toJson(success: it.size() > 0)
+              }
+            }
+          }
+
         }
+
       }
 
     }

@@ -50,7 +50,18 @@ class TeamsService implements Service {
         observe(Blocking.get {
             sql.executeUpdate('UPDATE teams SET name = :name WHERE id = :id', [name: team.name, id: team.id])
         })
+    }
 
+    Observable<Integer> delete(Long teamId) {
+        observe(Blocking.get {
+            sql.executeUpdate('DELETE FROM teams WHERE id = :id', [id: teamId])
+        })
+    }
+
+    Observable<Object> create(String name) {
+        observe(Blocking.get {
+            sql.executeInsert('INSERT INTO teams (NAME) VALUES(:name)', [name: name])
+        })
     }
 
     private team = { GroovyRowResult row ->
