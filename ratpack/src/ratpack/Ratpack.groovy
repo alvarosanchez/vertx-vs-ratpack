@@ -1,3 +1,4 @@
+import com.alvarosanchez.teams.ratpack.JwtAuthentication
 import com.alvarosanchez.teams.ratpack.TeamsService
 import ratpack.groovy.sql.SqlModule
 import ratpack.h2.H2Module
@@ -22,7 +23,11 @@ ratpack {
 
     all(RequestLogger.ncsa())
 
+    post('login', JwtAuthentication.login())
+
     prefix('teams') {
+
+      all JwtAuthentication.authenticate()
 
       get(':teamId') {
 

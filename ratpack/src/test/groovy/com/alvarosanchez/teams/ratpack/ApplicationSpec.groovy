@@ -8,8 +8,18 @@ import spock.lang.Specification
 
 class ApplicationSpec extends Specification {
 
-    @Shared ServerBackedApplicationUnderTest appUnderTest = new GroovyRatpackMainApplicationUnderTest()
-    @Delegate TestHttpClient testClient = appUnderTest.httpClient
+    @Shared
+    ServerBackedApplicationUnderTest appUnderTest = new GroovyRatpackMainApplicationUnderTest()
+
+    @Delegate
+    TestHttpClient testClient = appUnderTest.httpClient
+
+    @Shared
+    String token
+
+    void setup() {
+        token = postText('login')
+    }
 
     void 'API is protected'() {
         when:
@@ -17,6 +27,17 @@ class ApplicationSpec extends Specification {
 
         then:
         response.statusCode == 401
+    }
+
+    void 'it can list teams'() {
+        given:
+        requestSpec { it.headers.add('Authorization', "Bearer ${token}") }
+
+        when:
+        get('teams')
+
+        then:
+        response.body.text == '[]'
     }
 
 }

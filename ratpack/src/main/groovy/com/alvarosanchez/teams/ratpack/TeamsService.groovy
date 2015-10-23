@@ -26,18 +26,9 @@ class TeamsService implements Service {
     void onStart(StartEvent event) throws Exception {
         RxRatpack.initialize()
         observe(Blocking.get {
-            sql.executeInsert('CREATE TABLE teams(id int auto_increment, name varchar(255))')
+            sql.executeInsert('CREATE TABLE IF NOT EXISTS teams(id int auto_increment, name varchar(255))')
         }).subscribe {
             log.debug "Database initialised"
-        }
-    }
-
-    @Override
-    void onStop(StopEvent event) throws Exception {
-        observe(Blocking.get {
-            sql.executeInsert("DROP ALL OBJECTS DELETE FILES")
-        }).subscribe {
-            log.debug "Database stopped"
         }
     }
 

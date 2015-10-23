@@ -27,6 +27,8 @@ dependencies {
   compile ratpack.dependency('h2')
   compile ratpack.dependency('rx')
 
+  compile 'com.nimbusds:nimbus-jose-jwt:4.3.1'
+
   testCompile "org.spockframework:spock-core:1.0-groovy-2.4"
 }
 

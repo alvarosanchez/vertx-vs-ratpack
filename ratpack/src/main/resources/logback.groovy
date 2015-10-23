@@ -10,5 +10,6 @@ appender("STDOUT", ConsoleAppender) {
     }
 }
 logger("com.alvarosanchez.teams", DEBUG)
+logger("org.pac4j", DEBUG)
 
 root(INFO, ["STDOUT"])
