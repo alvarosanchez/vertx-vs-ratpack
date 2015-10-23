@@ -1,5 +1,7 @@
 import com.alvarosanchez.teams.ratpack.JwtAuthentication
+import com.alvarosanchez.teams.ratpack.Team
 import com.alvarosanchez.teams.ratpack.TeamsService
+import groovy.json.JsonOutput
 import ratpack.groovy.sql.SqlModule
 import ratpack.h2.H2Module
 import ratpack.handling.RequestLogger
@@ -19,9 +21,7 @@ ratpack {
     bind TeamsService
   }
 
-  handlers {
-
-    all(RequestLogger.ncsa())
+  handlers { TeamsService teamsService ->
 
     post('login', JwtAuthentication.login())
 
@@ -31,6 +31,12 @@ ratpack {
 
       get(':teamId') {
 
+      }
+
+      get {
+        teamsService.list().toList().subscribe { List<Team> teams ->
+          response.send JsonOutput.toJson(teams)
+        }
       }
 
     }

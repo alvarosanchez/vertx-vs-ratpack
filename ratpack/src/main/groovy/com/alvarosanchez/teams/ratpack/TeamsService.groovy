@@ -6,11 +6,12 @@ import ratpack.exec.Blocking
 import ratpack.rx.RxRatpack
 import ratpack.server.Service
 import ratpack.server.StartEvent
-import ratpack.server.StopEvent
+import rx.Observable
 
 import javax.inject.Inject
 
 import static ratpack.rx.RxRatpack.observe
+import static ratpack.rx.RxRatpack.observeEach
 
 @Slf4j
 class TeamsService implements Service {
@@ -29,6 +30,14 @@ class TeamsService implements Service {
             sql.executeInsert('CREATE TABLE IF NOT EXISTS teams(id int auto_increment, name varchar(255))')
         }).subscribe {
             log.debug "Database initialised"
+        }
+    }
+
+    Observable<Team> list() {
+        observeEach(Blocking.get {
+            sql.rows('SELECT * FROM teams')
+        }).map { row ->
+            return new Team(id: row.id, name: row.name)
         }
     }
 
