@@ -1,2 +1,2 @@
 rootProject.name = 'teams'
-include 'teams-core', 'vertx', 'ratpack'
+include 'vertx', 'ratpack'
